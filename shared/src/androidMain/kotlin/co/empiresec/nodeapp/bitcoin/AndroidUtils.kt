@@ -111,15 +111,15 @@ actual object Utils {
     }
 }
 
-actual class BitcoinConf(
-    actual val rpcUser: String,
-    actual val rpcPassword: String,
-    actual val rpcHost: String,
-    actual val rpcPort: Int,
-    actual val dataDir: String,
-    actual val testnet: Boolean,
-    actual val prune: Int?
-) {
+actual class BitcoinConf {
+    actual var rpcUser: String = ""
+    actual var rpcPassword: String = ""
+    actual var rpcHost: String = ""
+    actual var rpcPort: Int = 8332
+    actual var dataDir: String = ""
+    actual var testnet: Boolean = false
+    actual var prune: Int? = null
+
     actual companion object {
         actual fun load(path: String): BitcoinConf? {
             return try {
@@ -129,30 +129,30 @@ actual class BitcoinConf(
                 
                 props.load(BufferedInputStream(FileInputStream(file)))
                 
-                BitcoinConf(
-                    rpcUser = props.getProperty("rpcuser", ""),
-                    rpcPassword = props.getProperty("rpcpassword", ""),
-                    rpcHost = props.getProperty("rpcconnect", "127.0.0.1"),
-                    rpcPort = props.getProperty("rpcport", "8332").toIntOrNull() ?: 8332,
-                    dataDir = props.getProperty("datadir", Utils.getDataDir()),
-                    testnet = props.getProperty("testnet", "0") == "1",
+                BitcoinConf().apply {
+                    rpcUser = props.getProperty("rpcuser", "")
+                    rpcPassword = props.getProperty("rpcpassword", "")
+                    rpcHost = props.getProperty("rpcconnect", "127.0.0.1")
+                    rpcPort = props.getProperty("rpcport", "8332").toIntOrNull() ?: 8332
+                    dataDir = props.getProperty("datadir", Utils.getDataDir())
+                    testnet = props.getProperty("testnet", "0") == "1"
                     prune = props.getProperty("prune")?.toIntOrNull()
-                )
+                }
             } catch (e: Exception) {
                 null
             }
         }
         
         actual fun default(): BitcoinConf {
-            return BitcoinConf(
-                rpcUser = "bitcoinrpc",
-                rpcPassword = generatePassword(),
-                rpcHost = "127.0.0.1",
-                rpcPort = 8332,
-                dataDir = Utils.getDataDir(),
-                testnet = false,
+            return BitcoinConf().apply {
+                rpcUser = "bitcoinrpc"
+                rpcPassword = generatePassword()
+                rpcHost = "127.0.0.1"
+                rpcPort = 8332
+                dataDir = Utils.getDataDir()
+                testnet = false
                 prune = null
-            )
+            }
         }
     }
 }

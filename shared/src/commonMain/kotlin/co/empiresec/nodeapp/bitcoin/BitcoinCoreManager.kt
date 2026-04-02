@@ -51,7 +51,7 @@ class BitcoinCoreManager(
             val fileName = url.substring(url.lastIndexOf("/") + 1)
             val downloadPath = File(dataDir, fileName)
             
-            Utils.downloadFile(url, downloadPath.path) { rate, total ->
+            downloadFile(url, downloadPath.path) { rate, total ->
                 onProgress(DownloadProgress(rate, total))
             }
             

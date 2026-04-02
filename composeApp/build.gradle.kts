@@ -1,5 +1,4 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -27,19 +26,6 @@ kotlin {
         }
     }
     
-    jvm()
-    
-    js {
-        browser()
-        binaries.executable()
-    }
-    
-    @OptIn(ExperimentalWasmDsl::class)
-    wasmJs {
-        browser()
-        binaries.executable()
-    }
-    
     sourceSets {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
@@ -58,6 +44,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.kotlinxSerializationJson)
             implementation(projects.shared)
+            implementation("androidx.compose.material:material-icons-extended:1.7.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -94,16 +81,4 @@ android {
 
 dependencies {
     debugImplementation(libs.compose.uiTooling)
-}
-
-compose.desktop {
-    application {
-        mainClass = "co.empiresec.nodeapp.MainKt"
-
-        nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "co.empiresec.nodeapp"
-            packageVersion = "0.5.0"
-        }
-    }
 }

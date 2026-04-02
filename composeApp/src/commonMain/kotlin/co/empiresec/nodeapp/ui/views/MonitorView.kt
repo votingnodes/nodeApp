@@ -1,7 +1,9 @@
 package co.empiresec.nodeapp.ui.views
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -176,7 +178,7 @@ private fun BandwidthStat(label: String, value: String, color: androidx.compose.
             Box(
                 modifier = Modifier
                     .size(12.dp)
-                    .background(color, shape = androidx.compose.foundation.shape.CircleShape)
+                    .background(color, shape = CircleShape)
             )
             Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -199,7 +201,7 @@ private fun DiskUsageItem(name: String, size: String, color: androidx.compose.ui
             Box(
                 modifier = Modifier
                     .size(12.dp)
-                    .background(color, shape = androidx.compose.foundation.shape.CircleShape)
+                    .background(color, shape = CircleShape)
             )
             Text(name)
         }

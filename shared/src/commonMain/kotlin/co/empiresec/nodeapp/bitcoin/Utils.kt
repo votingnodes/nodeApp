@@ -28,15 +28,15 @@ expect object Utils {
     fun stopDaemon(): Boolean
 }
 
-expect class BitcoinConf(
-    val rpcUser: String,
-    val rpcPassword: String,
-    val rpcHost: String,
-    val rpcPort: Int,
-    val dataDir: String,
-    val testnet: Boolean,
-    val prune: Int?
-) {
+expect class BitcoinConf {
+    var rpcUser: String
+    var rpcPassword: String
+    var rpcHost: String
+    var rpcPort: Int
+    var dataDir: String
+    var testnet: Boolean
+    var prune: Int?
+
     companion object {
         fun load(path: String): BitcoinConf?
         fun default(): BitcoinConf
