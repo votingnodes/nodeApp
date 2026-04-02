@@ -44,7 +44,6 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.kotlinxSerializationJson)
             implementation(projects.shared)
-            implementation("androidx.compose.material:material-icons-extended:1.7.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
