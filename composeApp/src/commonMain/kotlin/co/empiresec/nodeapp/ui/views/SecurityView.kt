@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import co.empiresec.nodeapp.bitcoin.BitcoinNodeManager
 import co.empiresec.nodeapp.ui.components.Badge
 import co.empiresec.nodeapp.ui.components.StatsCard
 import co.empiresec.nodeapp.ui.theme.BitcoinOrange
@@ -17,8 +18,27 @@ import co.empiresec.nodeapp.ui.theme.BlockGreen
 
 @Composable
 fun SecurityView() {
+    val nodeManager = remember { BitcoinNodeManager.instance }
     var autoBackup by remember { mutableStateOf(true) }
     var torEnabled by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        nodeManager.startAutoRefresh(10000)
+    }
+    
+    DisposableEffect(Unit) {
+        onDispose {
+            nodeManager.stopAutoRefresh()
+        }
+    }
+    
+    val nodeStatus by nodeManager.nodeStatus.collectAsState()
+    val networkInfo by nodeManager.networkInfo.collectAsState()
+    val peers by nodeManager.peers.collectAsState()
+    
+    val isRunning = nodeStatus?.state == co.empiresec.nodeapp.bitcoin.DaemonState.RUNNING
+    val connections = networkInfo?.connections ?: 0
+    val bip110Peers = peers.count { it.version >= 70016 }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -49,13 +69,13 @@ fun SecurityView() {
             StatsCard(modifier = Modifier.fillMaxWidth()) {
                 Text("Security Audit", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(12.dp))
-                SecurityCheck("Wallet Encryption", "Wallet is encrypted with AES-256", "pass")
+                SecurityCheck("Wallet Encryption", if (isRunning) "Bitcoin daemon is running" else "Daemon not running", "pass")
                 Spacer(Modifier.height(8.dp))
-                SecurityCheck("Backup Exists", "Last backup: 2 days ago", "pass")
+                SecurityCheck("Peer Connections", "$connections peers connected ($bip110Peers BIP-110)", if (connections > 0) "pass" else "warning")
                 Spacer(Modifier.height(8.dp))
-                SecurityCheck("Peer Connections", "6 verified BIP-110 peers connected", "pass")
+                SecurityCheck("Network Status", if (isRunning) "Node is operational" else "Node is offline", if (isRunning) "pass" else "warning")
                 Spacer(Modifier.height(8.dp))
-                SecurityCheck("Tor Privacy", "Tor is not enabled", "warning", "Enable Tor for enhanced privacy")
+                SecurityCheck("Tor Privacy", if (torEnabled) "Tor is enabled" else "Tor is not enabled", if (torEnabled) "pass" else "warning", if (!torEnabled) "Enable Tor for enhanced privacy" else null)
             }
         }
 

@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import co.empiresec.nodeapp.bitcoin.BitcoinNodeManager
 import co.empiresec.nodeapp.ui.components.Badge
 import co.empiresec.nodeapp.ui.components.StatsCard
 import co.empiresec.nodeapp.ui.theme.BitcoinOrange
@@ -21,7 +22,36 @@ import co.empiresec.nodeapp.ui.theme.BlockGreen
 
 @Composable
 fun WalletView() {
+    val nodeManager = remember { BitcoinNodeManager.instance }
     var showBalance by remember { mutableStateOf(true) }
+    
+    LaunchedEffect(Unit) {
+        nodeManager.startAutoRefresh(10000)
+    }
+    
+    DisposableEffect(Unit) {
+        onDispose {
+            nodeManager.stopAutoRefresh()
+        }
+    }
+    
+    val isRunning = nodeManager.nodeStatus.value?.state == co.empiresec.nodeapp.bitcoin.DaemonState.RUNNING
+    
+    var walletBalance by remember { mutableStateOf(0.0) }
+    var txCount by remember { mutableStateOf(0L) }
+    
+    LaunchedEffect(isRunning) {
+        if (isRunning) {
+            try {
+                val client = co.empiresec.nodeapp.bitcoin.BitcoinRPCClient(co.empiresec.nodeapp.bitcoin.BitcoinConf.default())
+                walletBalance = client.getBalance()
+                val walletInfo = client.getWalletInfo()
+                txCount = walletInfo?.txcount ?: 0
+            } catch (e: Exception) {
+                // Wallet not loaded
+            }
+        }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -49,13 +79,13 @@ fun WalletView() {
                 if (showBalance) {
                     Column {
                         Text(
-                            "₿ 2.63621347",
+                            "₿ %.8f".format(walletBalance),
                             style = MaterialTheme.typography.displayMedium,
                             fontFamily = FontFamily.Monospace,
                             color = BitcoinOrange
                         )
                         Text(
-                            "≈ $235,234.56 USD",
+                            "≈ $%,.2f USD".format(walletBalance * 89000),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -75,8 +105,8 @@ fun WalletView() {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                WalletStat("BTC Price", "$89,234.56", BlockGreen, Modifier.weight(1f))
-                WalletStat("Total Wallets", "3", MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
+                WalletStat("BTC Price", "$89,000", BlockGreen, Modifier.weight(1f))
+                WalletStat("Total Tx", if (txCount > 0) "%,d".format(txCount) else "--", MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
             }
         }
 

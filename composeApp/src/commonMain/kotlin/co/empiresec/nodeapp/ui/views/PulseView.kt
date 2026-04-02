@@ -16,14 +16,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import co.empiresec.nodeapp.bitcoin.BitcoinNodeManager
+import co.empiresec.nodeapp.bitcoin.PeerInfo
 import co.empiresec.nodeapp.ui.components.Badge
 import co.empiresec.nodeapp.ui.components.StatsCard
 import co.empiresec.nodeapp.ui.theme.BitcoinOrange
 import co.empiresec.nodeapp.ui.theme.BlockGreen
 import co.empiresec.nodeapp.ui.theme.DarkBackground
-import kotlinx.coroutines.delay
 
-data class PeerInfo(
+data class PeerInfoUI(
     val ip: String,
     val taproot: Boolean,
     val bip110: Boolean,
@@ -33,31 +34,46 @@ data class PeerInfo(
 
 @Composable
 fun PulseView() {
-    var syncProgress by remember { mutableStateOf(87.3f) }
-    var isEnforced by remember { mutableStateOf(true) }
-    var networkIn by remember { mutableStateOf(1247) }
-    var networkOut by remember { mutableStateOf(892) }
-
-    // Simulate updates
+    val nodeManager = remember { BitcoinNodeManager.instance }
+    
     LaunchedEffect(Unit) {
-        while (true) {
-            delay(2000)
-            syncProgress = (syncProgress + 0.1f).coerceAtMost(100f)
-            if (syncProgress >= 100f) syncProgress = 87.3f
-
-            networkIn = (500..2000).random()
-            networkOut = (300..1500).random()
+        nodeManager.startAutoRefresh(5000)
+    }
+    
+    DisposableEffect(Unit) {
+        onDispose {
+            nodeManager.stopAutoRefresh()
         }
     }
-
-    val peers = remember {
-        listOf(
-            PeerInfo("45.132.246.15", true, true, false, 45),
-            PeerInfo("23.94.21.187", true, true, true, 32),
-            PeerInfo("178.128.45.92", true, false, false, 78),
-            PeerInfo("104.248.156.201", false, false, true, 125),
-            PeerInfo("188.166.23.47", true, true, false, 56),
-            PeerInfo("142.93.156.89", true, true, true, 41)
+    
+    val nodeStatus by nodeManager.nodeStatus.collectAsState()
+    val blockChainInfo by nodeManager.blockChainInfo.collectAsState()
+    val networkInfo by nodeManager.networkInfo.collectAsState()
+    val mempoolInfo by nodeManager.mempoolInfo.collectAsState()
+    val peers by nodeManager.peers.collectAsState()
+    
+    val isRunning = nodeStatus?.state == co.empiresec.nodeapp.bitcoin.DaemonState.RUNNING
+    
+    val syncProgress = if (blockChainInfo != null) {
+        (blockChainInfo!!.verificationProgress * 100).toFloat()
+    } else 0f
+    
+    val blockHeight = blockChainInfo?.blocks ?: 0
+    val bestBlockHash = blockChainInfo?.bestBlockHash ?: ""
+    val difficulty = blockChainInfo?.difficulty ?: 0.0
+    val chainSize = blockChainInfo?.sizeOnDisk ?: 0
+    val connections = networkInfo?.connections ?: 0
+    val mempoolSize = mempoolInfo?.size ?: 0
+    val mempoolBytes = mempoolInfo?.bytes ?: 0
+    val mempoolMinFee = mempoolInfo?.mempoolMinFee ?: 0.0
+    
+    val peerInfoList = peers.map { p ->
+        PeerInfoUI(
+            ip = p.addr.substringBefore(":"),
+            taproot = p.version >= 70016,
+            bip110 = false,
+            inbound = p.inbound,
+            ping = p.pingtime?.toInt() ?: 0
         )
     }
 
@@ -122,11 +138,11 @@ fun PulseView() {
                         Spacer(Modifier.height(8.dp))
 
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            InfoRow("Block Height", "834,527")
-                            InfoRow("Network", "mainnet")
-                            InfoRow("Uptime", "14d 7h 23m")
-                            InfoRow("Last Block", "2min ago", BlockGreen)
-                            InfoRow("Version", "Floresta v0.4.0")
+                            InfoRow("Block Height", if (blockHeight > 0) "%,d".format(blockHeight) else "--")
+                            InfoRow("Network", blockChainInfo?.chain?.ifEmpty { "mainnet" } ?: "mainnet")
+                            InfoRow("Uptime", if (isRunning) "Running" else "Stopped")
+                            InfoRow("Last Block", bestBlockHash.take(8) + "...", BlockGreen)
+                            InfoRow("Version", networkInfo?.version?.toString() ?: "N/A")
                         }
                     }
                 }
@@ -142,19 +158,19 @@ fun PulseView() {
                 MetricCard(
                     icon = Icons.Default.Settings,
                     label = "Difficulty",
-                    value = "79.35T",
+                    value = if (difficulty > 0) "%.2fT".format(difficulty / 1_000_000_000_000) else "--",
                     modifier = Modifier.weight(1f)
                 )
                 MetricCard(
                     icon = Icons.Default.Storage,
                     label = "Chain Size",
-                    value = "573.8 GB",
+                    value = if (chainSize > 0) "%.1f GB".format(chainSize / 1_000_000_000) else "--",
                     modifier = Modifier.weight(1f)
                 )
                 MetricCard(
                     icon = Icons.Default.Wifi,
                     label = "Connections",
-                    value = "6",
+                    value = if (connections > 0) connections.toString() else "--",
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -185,7 +201,7 @@ fun PulseView() {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            "47,823",
+                            "%,d".format(mempoolSize),
                             style = MaterialTheme.typography.headlineMedium
                         )
                     }
@@ -196,7 +212,7 @@ fun PulseView() {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            "89.4 MB",
+                            if (mempoolBytes > 0) "%.1f MB".format(mempoolBytes / 1_000_000) else "--",
                             style = MaterialTheme.typography.headlineMedium
                         )
                     }
@@ -207,7 +223,7 @@ fun PulseView() {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            "14 sat/vB",
+                            if (mempoolMinFee > 0) "%.0f sat/vB".format(mempoolMinFee * 100000) else "--",
                             style = MaterialTheme.typography.headlineMedium,
                             color = BitcoinOrange
                         )
@@ -265,7 +281,7 @@ fun PulseView() {
                         style = MaterialTheme.typography.titleMedium
                     )
                     Badge(
-                        text = "Height: 834,527",
+                        text = if (blockHeight > 0) "Height: %,d".format(blockHeight) else "Height: --",
                         color = BlockGreen
                     )
                 }
@@ -276,7 +292,7 @@ fun PulseView() {
                     color = DarkBackground
                 ) {
                     Text(
-                        "00000000000000000002a7c4c1e48d76c5a37902165a270156b7a8d72728a054",
+                        bestBlockHash.ifEmpty { "No block data" },
                         modifier = Modifier.padding(12.dp),
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = FontFamily.Monospace,

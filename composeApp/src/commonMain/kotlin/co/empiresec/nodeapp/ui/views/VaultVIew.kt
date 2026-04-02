@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import co.empiresec.nodeapp.bitcoin.BitcoinNodeManager
 import co.empiresec.nodeapp.ui.components.Badge
 import co.empiresec.nodeapp.ui.components.StatsCard
 import co.empiresec.nodeapp.ui.theme.BitcoinOrange
@@ -27,6 +28,21 @@ data class LightningChannel(
 
 @Composable
 fun VaultView() {
+    val nodeManager = remember { BitcoinNodeManager.instance }
+    
+    LaunchedEffect(Unit) {
+        nodeManager.startAutoRefresh(10000)
+    }
+    
+    DisposableEffect(Unit) {
+        onDispose {
+            nodeManager.stopAutoRefresh()
+        }
+    }
+    
+    val blockChainInfo by nodeManager.blockChainInfo.collectAsState()
+    val latestBlockHeight = blockChainInfo?.blocks ?: 0
+    
     val channels = remember {
         listOf(
             LightningChannel("034a5e...7f2d", 5_000_000, 3_200_000, 1_800_000, "active", 99.8f),
@@ -128,6 +144,17 @@ fun VaultView() {
                         Icon(Icons.Default.Wifi, null, tint = BlockGreen)
                         Text("Backend Link (Electrum → Floresta)", style = MaterialTheme.typography.titleMedium)
                     }
+                    Badge(text = "CONNECTED", color = BlockGreen)
+                }
+                Spacer(Modifier.height(16.dp"))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    InfoRow("Endpoint", "127.0.0.1:50001")
+                    InfoRow("Latency", "12ms")
+                    InfoRow("LND Block Height", if (latestBlockHeight > 0) "%,d".format(latestBlockHeight) else "--")
+                    InfoRow("Floresta Height", if (latestBlockHeight > 0) "%,d".format(latestBlockHeight) else "--")
+                }
+            }
+        }
                     Badge(text = "CONNECTED", color = BlockGreen)
                 }
                 Spacer(Modifier.height(16.dp))

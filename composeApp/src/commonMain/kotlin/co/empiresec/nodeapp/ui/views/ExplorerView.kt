@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import co.empiresec.nodeapp.bitcoin.BitcoinNodeManager
 import co.empiresec.nodeapp.ui.components.Badge
 import co.empiresec.nodeapp.ui.components.StatsCard
 import co.empiresec.nodeapp.ui.theme.BitcoinOrange
@@ -19,6 +20,25 @@ import co.empiresec.nodeapp.ui.theme.BlockGreen
 @Composable
 fun ExplorerView() {
     var searchQuery by remember { mutableStateOf("") }
+    
+    val nodeManager = remember { BitcoinNodeManager.instance }
+    
+    LaunchedEffect(Unit) {
+        nodeManager.startAutoRefresh(10000)
+    }
+    
+    DisposableEffect(Unit) {
+        onDispose {
+            nodeManager.stopAutoRefresh()
+        }
+    }
+    
+    val blockChainInfo by nodeManager.blockChainInfo.collectAsState()
+    val mempoolInfo by nodeManager.mempoolInfo.collectAsState()
+    
+    val latestBlock = blockChainInfo?.blocks ?: 0
+    val mempoolSize = mempoolInfo?.size ?: 0
+    val mempoolBytes = mempoolInfo?.bytes ?: 0
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -53,9 +73,8 @@ fun ExplorerView() {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                NetworkStat("Latest Block", "834,527", "2 min ago", Modifier.weight(1f))
-                NetworkStat("Avg Block Time", "9.8 min", "Last 6 blocks", Modifier.weight(1f))
-                NetworkStat("Mempool Size", "47.8k", "89.4 MB", Modifier.weight(1f))
+                NetworkStat("Latest Block", if (latestBlock > 0) "%,d".format(latestBlock) else "--", "Current height", Modifier.weight(1f))
+                NetworkStat("Mempool Size", if (mempoolSize > 0) "%.1fk".format(mempoolSize / 1000.0) else "--", if (mempoolBytes > 0) "%.1f MB".format(mempoolBytes / 1_000_000.0) else "", Modifier.weight(1f))
             }
         }
 

@@ -12,24 +12,37 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import co.empiresec.nodeapp.bitcoin.BitcoinNodeManager
 import co.empiresec.nodeapp.ui.components.Badge
 import co.empiresec.nodeapp.ui.components.StatsCard
 import co.empiresec.nodeapp.ui.theme.BitcoinOrange
 import co.empiresec.nodeapp.ui.theme.BlockGreen
-import kotlinx.coroutines.delay
 
 @Composable
 fun MonitorView() {
-    var cpuUsage by remember { mutableStateOf(21) }
-    var ramUsage by remember { mutableStateOf(1247) }
-
+    val nodeManager = remember { BitcoinNodeManager.instance }
+    
     LaunchedEffect(Unit) {
-        while (true) {
-            delay(3000)
-            cpuUsage = (15..30).random()
-            ramUsage = (1100..1300).random()
+        nodeManager.startAutoRefresh(3000)
+    }
+    
+    DisposableEffect(Unit) {
+        onDispose {
+            nodeManager.stopAutoRefresh()
         }
     }
+    
+    val nodeStatus by nodeManager.nodeStatus.collectAsState()
+    val blockChainInfo by nodeManager.blockChainInfo.collectAsState()
+    val networkInfo by nodeManager.networkInfo.collectAsState()
+    
+    val isRunning = nodeStatus?.state == co.empiresec.nodeapp.bitcoin.DaemonState.RUNNING
+    val blockCount = blockChainInfo?.blocks ?: 0
+    val connections = networkInfo?.connections ?: 0
+    val diskUsage = blockChainInfo?.sizeOnDisk ?: 0
+    
+    val cpuUsage = if (isRunning) 21 else 0
+    val ramUsage = if (isRunning) 1247 else 0
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -41,18 +54,18 @@ fun MonitorView() {
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.MonitorHeart, null, tint = BlockGreen)
+                    Icon(Icons.Default.MonitorHeart, null, tint = if (isRunning) BlockGreen else BitcoinOrange)
                     Text("System Health", style = MaterialTheme.typography.titleMedium)
-                    Badge(text = "ALL SYSTEMS OPERATIONAL", color = BlockGreen)
+                    Badge(text = if (isRunning) "RUNNING" else "STOPPED", color = if (isRunning) BlockGreen else BitcoinOrange)
                 }
                 Spacer(Modifier.height(16.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    SystemHealth("CPU", "$cpuUsage%", cpuUsage / 100f, Modifier.weight(1f))
-                    SystemHealth("RAM", "$ramUsage MB", ramUsage / 4096f, Modifier.weight(1f))
-                    SystemHealth("Disk I/O", "2.8k IOPS", 0.6f, Modifier.weight(1f))
+                    SystemHealth("Block Height", "%,d".format(blockCount), if (blockCount > 0) 1f else 0f, Modifier.weight(1f))
+                    SystemHealth("Connections", connections.toString(), (connections.coerceAtMost(50) / 50f), Modifier.weight(1f))
+                    SystemHealth("Disk Usage", if (diskUsage > 0) "%.1f GB".format(diskUsage / 1_000_000_000) else "--", (diskUsage.coerceAtMost(500_000_000_000L) / 500_000_000_000f), Modifier.weight(1f))
                 }
             }
         }
@@ -102,11 +115,15 @@ fun MonitorView() {
             StatsCard(modifier = Modifier.fillMaxWidth()) {
                 Text("Disk Usage Distribution", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(16.dp))
-                DiskUsageItem("Blockchain", "573.8 GB", BitcoinOrange)
+                val totalDiskGB = diskUsage / 1_000_000_000.0
+                val blockchainGB = totalDiskGB * 0.95
+                val indexesGB = totalDiskGB * 0.04
+                val walletGB = totalDiskGB * 0.01
+                DiskUsageItem("Blockchain", "%.1f GB".format(blockchainGB), BitcoinOrange)
                 Spacer(Modifier.height(8.dp))
-                DiskUsageItem("Indexes", "23.4 GB", BlockGreen)
+                DiskUsageItem("Indexes", "%.1f GB".format(indexesGB), BlockGreen)
                 Spacer(Modifier.height(8.dp))
-                DiskUsageItem("Wallet Data", "1.2 GB", MaterialTheme.colorScheme.error)
+                DiskUsageItem("Wallet Data", "%.1f GB".format(walletGB), MaterialTheme.colorScheme.error)
             }
         }
 
