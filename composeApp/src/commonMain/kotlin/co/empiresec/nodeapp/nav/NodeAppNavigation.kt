@@ -20,22 +20,17 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object Explorer : Screen("explorer", "Explorer", Icons.Default.Search)
     object Monitor : Screen("monitor", "Monitor", Icons.Default.BarChart)
     object Security : Screen("security", "Security", Icons.Default.Security)
+    object Bitcoin : Screen("bitcoin", "Bitcoin", Icons.Default.Computer)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NodeAppNavigation() {
-    var currentScreen by remember { mutableStateOf<Screen>(Screen.Pulse) }
+    var currentScreen by remember { mutableStateOf<Screen>(Screen.Bitcoin) }
     var showConsensusDialog by remember { mutableStateOf(false) }
 
     val screens = listOf(
-        Screen.Pulse,
-        Screen.Forest,
-        Screen.Vault,
-        Screen.Wallet,
-        Screen.Explorer,
-        Screen.Monitor,
-        Screen.Security
+        Screen.Bitcoin
     )
 
     Scaffold(
@@ -133,13 +128,7 @@ fun NodeAppNavigation() {
                     .padding(16.dp)
             ) {
                 when (currentScreen) {
-                    Screen.Pulse -> PulseView()
-                    Screen.Forest -> ForestView()
-                    Screen.Vault -> VaultView()
-                    Screen.Wallet -> WalletView()
-                    Screen.Explorer -> ExplorerView()
-                    Screen.Monitor -> MonitorView()
-                    Screen.Security -> SecurityView()
+                    Screen.Bitcoin -> BitcoinView()
                 }
             }
         }
